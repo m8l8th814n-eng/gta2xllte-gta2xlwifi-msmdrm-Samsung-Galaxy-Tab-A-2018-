@@ -1,0 +1,81 @@
+# Kernel config based on: defconfig, msm8953.config, and device configs
+maintainer="Barnabas Czeman <barnabas.czeman@postmarketos.org>"
+_flavor="postmarketos-qcom-msm8953"
+pkgname=linux-$_flavor
+pkgver=7.0.9_p20260719180000
+pkgrel=0
+pkgdesc="Close to mainline linux kernel for Qualcomm Snapdragon MSM8953"
+arch="aarch64"
+_carch="arm64"
+url="https://github.com/msm8953-mainline/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-community
+"
+makedepends="
+	bison
+	clang
+	findutils
+	flex
+	lld
+	llvm
+	openssl-dev
+	perl
+	postmarketos-installkernel
+	python3
+"
+
+_tag="7.0.9-r0"
+
+source="
+	$pkgname-v$_tag.tar.gz::$url/archive/v$_tag.tar.gz
+	config-$_flavor.aarch64
+	panel-gta2xl-exit-sleep-and-backlight.patch
+	isl98608-regulator.patch
+	fts1ba90a-touchscreen.patch
+	sdm450-samsung-gta2xllte.dts
+"
+builddir="$srcdir/linux-$_tag"
+
+prepare() {
+	default_prepare
+
+	# Skriv över .config i builddir med vår config, ovillkorligt.
+	cp -f "$srcdir/config-$_flavor.$arch" "$builddir/.config"
+
+	# Vår gta2xllte-dts ersätter uppströms version. Makefile-raden finns
+	# redan (arch/arm64/boot/dts/qcom/Makefile), så bara filen behöver in.
+	cp -f "$srcdir/sdm450-samsung-gta2xllte.dts" \
+		"$builddir/arch/arm64/boot/dts/qcom/sdm450-samsung-gta2xllte.dts"
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	mkdir -p "$pkgdir"/boot
+
+	make zinstall modules_install dtbs_install \
+		ARCH="$_carch" \
+		LLVM=1 \
+		INSTALL_PATH="$pkgdir"/boot \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir/boot/dtbs"
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
+
+	install -Dm644 "$builddir/include/config/kernel.release" \
+		"$pkgdir/usr/share/kernel/$_flavor/kernel.release"
+}
+sha512sums="
+660bb93c2d19efe27a0c19a795801cbbf092f19589b96a857e320345b406a887498a0ab6b0e435b3ef5c244f5c193f82c8a61876853f3a6c1cf0932632d00c5f  linux-postmarketos-qcom-msm8953-v7.0.9-r0.tar.gz
+63909563004a8bec012fef9c1851094b3d32f204b355d12692d4c14f14b62d73489dc3842c83e17f88846754ca00b28101c224b110c2c194e1a098b7de7c2cb6  config-postmarketos-qcom-msm8953.aarch64
+a4950034fa718bc279f1fbccc63b649f9eccd4d6d0cc6fecfcf340be8d2e4a6e1dd95673b5ac4ef9aca000afbf0c1634e92eb71e1b9aeecd8898a7d690cb1b45  panel-gta2xl-exit-sleep-and-backlight.patch
+86b6d11d1e04745bf0d2203a86631845b395540573e94b707708dd1795ff00db51094d0471d347af95487516d39e6b03eccba02d5de0607d2a0e7ebec5421917  isl98608-regulator.patch
+288447971b7670d62bedfc034d33d6d1d62ee215ba31c05cd4ff7a2e4f1b7d2b43a5085af351899b9f349d145864beae6eba5d777be55b56b486e377db853392  fts1ba90a-touchscreen.patch
+0b305443544265fec50b9688ca5af63ee153f96b90a2670299f615c16939e8e3b422834ca6e6be81a3b0b13818c97c1cf24c4a763d0cd26f1d80d30ef41c9617  sdm450-samsung-gta2xllte.dts
+"

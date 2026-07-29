@@ -356,17 +356,31 @@
         model = "samsung-gta2xllte";
 
         pinctrl-names = "default", "sleep";
-        pinctrl-0 = <&cdc_pdm_lines_act
-                &cdc_pdm_lines_2_act
-                &cdc_pdm_comp_lines_act
+        pinctrl-0 = <&cdc_pdm_lines_default
+                &cdc_pdm_lines_2_default
+                &cdc_pdm_comp_lines_default
                 &tlmm_pri_act>;
-        pinctrl-1 = <&cdc_pdm_lines_sus
-                &cdc_pdm_lines_2_sus
-                &cdc_pdm_comp_lines_sus
+        pinctrl-1 = <&cdc_pdm_lines_sleep
+                &cdc_pdm_lines_2_sleep
+                &cdc_pdm_comp_lines_sleep
                 &tlmm_pri_sus>;
 
         status = "okay";
   };
+
+/*
+ * Analog WCD-codec (pm8916-wcd-analog-codec @ pm8953 USID1 0xf000).
+ * Finns i pm8953.dtsi men status=disabled. sound_card kräver bade
+ * lpass_codec (digital) OCH wcd_codec (analog) -> utan denna: No soundcards.
+ * Supplies: l5=1.8V (io + tx-rx-cx), l13=micbias. Bekraftat mot apq8016 + samsung.
+ */
+&wcd_codec {
+	vdd-cdc-io-supply = <&pm8953_l5>;
+	vdd-cdc-tx-rx-cx-supply = <&pm8953_l5>;
+	vdd-micbias-supply = <&pm8953_l13>;
+
+	status = "okay";
+};
 
 &wcnss {
 	vddpx-supply = <&pm8953_l5>;
